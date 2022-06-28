@@ -1,0 +1,66 @@
+body,
+html {
+  margin: 0;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  height: inherit;
+  overflow: hidden;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+h1,
+p {
+  font-family: sans-serif;
+  text-align: center;
+  padding: 20px;
+}
+
+.input-container {
+  display: flex;
+  margin: auto;
+  width: 400px;
+  position: relative;
+  margin-top: 30vh;
+  max-width: 100vw;
+}
+
+.input-container input {
+  width: 100%;
+  font-size: 1.5rem;
+}
+
+.input-container:hover button,
+.input-container input:focus+button,
+.input-container .started {
+  display: block;
+}
+
+.input-container button {
+  width: 24px;
+  height: 24px;
+  background-color: rgb(73 73 73 / 20%);
+  cursor: pointer;
+  position: absolute;
+  right: 5px;
+  border: none;
+  border-radius: 50%;
+  top: 4px;
+  display: none;
+}
+
+.output-container {
+  height: 100px;
+  overflow: auto;
+  position: absolute;
+  bottom: 30vh;
+  bottom: 0px;
+  right: 0;
+  left: 0;
+  background-color: rgba(255, 255, 255, 0.2);
+}
