@@ -42,15 +42,9 @@ p {
 }
 
 .input-container button {
-  width: 24px;
-  height: 24px;
-  background-color: rgb(73 73 73 / 20%);
-  cursor: pointer;
   position: absolute;
   right: 5px;
-  border: none;
-  border-radius: 50%;
-  top: 4px;
+  top: 2px;
   display: none;
 }
 
