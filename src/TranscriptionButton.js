@@ -8,13 +8,13 @@ var recorder;
 var sampleRate;
 var lastPartialLength = 0;
 
-const saveToFile = (blob) => {
-  const blobUrl = URL.createObjectURL(blob);
-  var link = document.createElement("a"); // Or maybe get it from the current document
-  link.href = blobUrl;
-  link.download = "audio.ogg";
-  link.click();
-}
+// const saveToFile = (blob) => {
+//   const blobUrl = URL.createObjectURL(blob);
+//   var link = document.createElement("a");
+//   link.href = blobUrl;
+//   link.download = "audio.ogg";
+//   link.click();
+// }
 
 const TranscriptionButton = ({
   value,
@@ -54,7 +54,7 @@ const TranscriptionButton = ({
     };
 
     socket.onclose = () => {
-      if (recorder.state == 'recording') {
+      if (recorder.state === 'recording') {
         stopRecorder();
         start();
       }
@@ -106,7 +106,7 @@ const TranscriptionButton = ({
     socket.send(String(sampleRate));
     socket.send('start');
     setIsStarted(true);
-    recorder.start(10000);
+    recorder.start(1000);
   };
 
   const stop = async () => {
