@@ -35,6 +35,9 @@ const TranscriptionButton = ({
     });
 
     socket.onmessage = (event) => {
+      if (event.data.includes('Unable to load credentials')) {
+        return console.error('AWS Transcribe credentials not setup')
+      }
       const parsed = JSON.parse(event.data);
       parsed.lastPartialLength = lastPartialLength;
 
