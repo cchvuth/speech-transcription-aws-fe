@@ -4,6 +4,7 @@ import { debounce } from 'lodash';
 
 const url = 'ws://localhost.se:8080/api';
 
+const CHUNK_LENGTH_MS = 1000;
 var socket;
 var recorder;
 var sampleRate;
@@ -11,9 +12,9 @@ var lastPartialLength = 0;
 
 // Detect silence variables
 const MIN_DECIBELS = -45;
+const SILENCE_DURATION_MS = 2000;
 var analyser;
 var domainData;
-var bufferLength;
 
 // const saveToFile = (blob) => {
 //   const blobUrl = URL.createObjectURL(blob);
@@ -34,41 +35,48 @@ const TranscriptionButton = ({
   };
   const [isStarted, setIsStarted] = useState(false);
 
-  const initSocket = async () => {
-    await new Promise((res, rej) => {
+  const initSocket = () => {
+    return new Promise((res, rej) => {
       socket = new WebSocket(url);
       socket.onopen = () => res(socket);
       socket.onerror = (e) => rej(e);
+
+      socket.onmessage = (event) => {
+        if (event.data.includes('Unable to load credentials')) {
+          return console.error('AWS Transcribe credentials not setup');
+        }
+
+        let parsed;
+
+        try {
+          parsed = JSON.parse(event.data);
+          parsed.lastPartialLength = lastPartialLength;
+
+          if (parsed.isPartial) {
+            lastPartialLength = parsed.result.length;
+          } else {
+            lastPartialLength = 0;
+          }
+
+          const currentValue = value || '';
+          const nextValue =
+            currentValue.slice(0, -1 * parsed.lastPartialLength || undefined) +
+            parsed.result;
+
+          value = nextValue;
+          onChange(nextValue);
+        } catch (e) {
+          console.error('Invalid response from BE');
+        }
+      };
+
+      socket.onclose = () => {
+        if (_isStarted()) {
+          stop();
+          start();
+        }
+      };
     });
-
-    socket.onmessage = (event) => {
-      if (event.data.includes('Unable to load credentials')) {
-        return console.error('AWS Transcribe credentials not setup')
-      }
-      const parsed = JSON.parse(event.data);
-      parsed.lastPartialLength = lastPartialLength;
-
-      if (parsed.isPartial) {
-        lastPartialLength = parsed.result.length;
-      } else {
-        lastPartialLength = 0;
-      }
-
-      const currentValue = value || '';
-      const nextValue =
-        currentValue.slice(0, -1 * parsed.lastPartialLength || undefined) +
-        parsed.result;
-
-      value = nextValue;
-      onChange(nextValue);
-    };
-
-    socket.onclose = () => {
-      if (_isStarted()) {
-        stopRecorder();
-        start();
-      }
-    };
   };
 
   const initRecorder = () => {
@@ -83,7 +91,7 @@ const TranscriptionButton = ({
       sampleRate = stream?.getAudioTracks()[0]?.getSettings().sampleRate;
 
       if (!sampleRate) {
-        throw new Error('No sample rate');
+        return rej(new Error('No sample rate'));
       }
 
       recorder = new MediaRecorder(
@@ -92,28 +100,27 @@ const TranscriptionButton = ({
         {},
       );
 
-      recorder.addEventListener('dataavailable', async (e) => {
+      recorder.addEventListener('dataavailable', (e) => {
         socket.send(e.data);
-        // saveToFile(new Blob([e.data]));
       });
 
       recorder.addEventListener('error', (e) => {
         console.error(e);
       });
 
-      // Detect silence
+      // Init detect silence
       const audioContext = new AudioContext();
       const audioStreamSource = audioContext.createMediaStreamSource(stream);
       analyser = audioContext.createAnalyser();
       analyser.minDecibels = MIN_DECIBELS;
       audioStreamSource.connect(analyser);
-      bufferLength = analyser.frequencyBinCount;
-      domainData = new Uint8Array(bufferLength);
+      domainData = new Uint8Array(analyser.frequencyBinCount);
 
       res(recorder);
     });
   };
 
+  // isStarted state sometimes failed to be up to date when check within js code.
   const _isStarted = () => {
     return recorder.state === 'recording'
   }
@@ -123,29 +130,19 @@ const TranscriptionButton = ({
 
     analyser.getByteFrequencyData(domainData);
 
-    for (let i = 0; i < bufferLength; i++) {
+    for (let i = 0; i < analyser.frequencyBinCount; i++) {
       if (domainData[i] > 0) {
         soundDetected = true
       }
     }
 
     if (soundDetected) {
-      debouncestopRecorder();
+      debounceStop();
     }
 
     if (_isStarted()) {
       window.requestAnimationFrame(detectSound);
     }
-  };
-
-  const debouncestopRecorder = debounce(() => {
-    stop();
-  }, 2000);
-
-  const stopRecorder = () => {
-    recorder.stop();
-    recorder.stream.getTracks().forEach((i) => i.stop());
-    setIsStarted(false);
   };
 
   const start = async () => {
@@ -154,22 +151,31 @@ const TranscriptionButton = ({
     socket.send(String(sampleRate));
     socket.send('start');
     setIsStarted(true);
-    recorder.start(1000);
+    recorder.start(CHUNK_LENGTH_MS);
 
     window.requestAnimationFrame(detectSound);
   };
 
-  const stop = async () => {
+  const debounceStop = debounce(() => {
+    stop({ notifyServer: true });
+  }, SILENCE_DURATION_MS);
+
+  const stop = async (arg = {}) => {
     if (_isStarted()) {
-      stopRecorder();
-      setTimeout(() => {
-        socket.send('done');
-      }, 500);
+      recorder.stop();
+      recorder.stream.getTracks().forEach((i) => i.stop());
+      setIsStarted(false);
+
+      if (arg.notifyServer) {
+        setTimeout(() => {
+          socket.send('done');
+        }, 500);
+      }
     }
   };
 
   const onRecordClick = async () => {
-    isStarted ? stop() : start();
+    isStarted ? stop({ notifyServer: true }) : start();
   };
 
   const mixedStyle = Object.assign(
@@ -188,10 +194,10 @@ const TranscriptionButton = ({
   return (
     <button
       data-testid="TRANSCRIPTION_BTN"
-      style={mixedStyle}
-      onClick={onRecordClick}
+      style={ mixedStyle }
+      onClick={ onRecordClick }
     >
-      {isStarted ? '■' : '🎤'}
+      { isStarted ? '■' : '🎤' }
     </button>
   );
 };
