@@ -1,5 +1,6 @@
 import MediaRecorder from 'opus-media-recorder';
 import { useState } from 'react';
+import { debounce } from 'lodash';
 
 const url = 'ws://localhost.se:8080/api';
 
@@ -7,6 +8,12 @@ var socket;
 var recorder;
 var sampleRate;
 var lastPartialLength = 0;
+
+// Detect silence variables
+const MIN_DECIBELS = -45;
+var analyser;
+var domainData;
+var bufferLength;
 
 // const saveToFile = (blob) => {
 //   const blobUrl = URL.createObjectURL(blob);
@@ -57,7 +64,7 @@ const TranscriptionButton = ({
     };
 
     socket.onclose = () => {
-      if (recorder.state === 'recording') {
+      if (_isStarted()) {
         stopRecorder();
         start();
       }
@@ -93,9 +100,47 @@ const TranscriptionButton = ({
       recorder.addEventListener('error', (e) => {
         console.error(e);
       });
+
+      // Detect silence
+      const audioContext = new AudioContext();
+      const audioStreamSource = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.minDecibels = MIN_DECIBELS;
+      audioStreamSource.connect(analyser);
+      bufferLength = analyser.frequencyBinCount;
+      domainData = new Uint8Array(bufferLength);
+
       res(recorder);
     });
   };
+
+  const _isStarted = () => {
+    return recorder.state === 'recording'
+  }
+
+  const detectSound = () => {
+    let soundDetected = false;
+
+    analyser.getByteFrequencyData(domainData);
+
+    for (let i = 0; i < bufferLength; i++) {
+      if (domainData[i] > 0) {
+        soundDetected = true
+      }
+    }
+
+    if (soundDetected) {
+      debouncestopRecorder();
+    }
+
+    if (_isStarted()) {
+      window.requestAnimationFrame(detectSound);
+    }
+  };
+
+  const debouncestopRecorder = debounce(() => {
+    stop();
+  }, 2000);
 
   const stopRecorder = () => {
     recorder.stop();
@@ -110,13 +155,17 @@ const TranscriptionButton = ({
     socket.send('start');
     setIsStarted(true);
     recorder.start(1000);
+
+    window.requestAnimationFrame(detectSound);
   };
 
   const stop = async () => {
-    stopRecorder();
-    setTimeout(() => {
-      socket.send('done');
-    }, 500);
+    if (_isStarted()) {
+      stopRecorder();
+      setTimeout(() => {
+        socket.send('done');
+      }, 500);
+    }
   };
 
   const onRecordClick = async () => {
