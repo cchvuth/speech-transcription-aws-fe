@@ -132,7 +132,7 @@ const TranscriptionButton = ({
       if (domainData[i] > 0) {
         soundDetected = true
 
-        let normalized = Math.ceil(domainData[i] / 50);
+        let normalized = Math.ceil(domainData[i] / 30);
         if (normalized > tempVisualizerHeight) {
           tempVisualizerHeight = normalized;
         }
@@ -174,6 +174,7 @@ const TranscriptionButton = ({
       recorder.stop();
       recorder.stream.getTracks().forEach((i) => i.stop());
       setIsStarted(false);
+      setVisualizerHeight(0);
 
       if (arg.notifyServer) {
         setTimeout(() => {
