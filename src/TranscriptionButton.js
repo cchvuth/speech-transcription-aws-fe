@@ -29,11 +29,8 @@ const TranscriptionButton = ({
   onChange,
   style,
 }) => {
-  const colors = {
-    critical: 'red',
-    backgroundSoftGrey: 'gray'
-  };
   const [isStarted, setIsStarted] = useState(false);
+  const [visualizerHeight, setVisualizerHeight] = useState(0);
 
   const initSocket = () => {
     return new Promise((res, rej) => {
@@ -127,14 +124,26 @@ const TranscriptionButton = ({
 
   const detectSound = () => {
     let soundDetected = false;
+    let tempVisualizerHeight = 0;
 
     analyser.getByteFrequencyData(domainData);
 
     for (let i = 0; i < analyser.frequencyBinCount; i++) {
       if (domainData[i] > 0) {
         soundDetected = true
+
+        let normalized = Math.ceil(domainData[i] / 50);
+        if (normalized > tempVisualizerHeight) {
+          tempVisualizerHeight = normalized;
+        }
       }
     }
+
+    if (tempVisualizerHeight > 7) {
+      tempVisualizerHeight = 7;
+    }
+
+    setVisualizerHeight(tempVisualizerHeight)
 
     if (soundDetected) {
       debounceStop();
@@ -180,25 +189,25 @@ const TranscriptionButton = ({
 
   const mixedStyle = Object.assign(
     {
-      background: isStarted ? colors.critical : colors.backgroundSoftGrey,
-      width: '30px',
-      height: '30px',
+      width: '20px',
+      height: '20px',
       cursor: 'pointer',
       border: 'none',
       borderRadius: '50%',
       fontSize: '1rem',
+      transition: 'all 50ms ease',
+      boxShadow: `0px 0px 0px ${visualizerHeight}px #ffdada7d`
     },
     style,
   );
 
   return (
-    <button
+    <img
       data-testid="TRANSCRIPTION_BTN"
       style={ mixedStyle }
       onClick={ onRecordClick }
-    >
-      { isStarted ? '■' : '🎤' }
-    </button>
+      src={ isStarted ? 'pause-red.svg' : 'mic-red.svg' }
+    />
   );
 };
 
