@@ -28,6 +28,29 @@ p {
   position: relative;
   margin-top: 30vh;
   max-width: 100vw;
+
+  height: 80px;
+  border: 1px solid black;
+  text-align: left;
+  padding: 5px;
+  resize: vertical;
+  overflow: auto;
+}
+
+.DraftEditor-root {
+  width: 100%;
+}
+
+.pink {
+  background-color: pink;
+}
+
+.orange {
+  background-color: #ffd383;
+}
+
+.yellow {
+  background-color: #ffff77;
 }
 
 .input-container input {

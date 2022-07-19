@@ -2,7 +2,7 @@ import MediaRecorder from 'opus-media-recorder';
 import { useState } from 'react';
 import { debounce } from 'lodash';
 
-const url = 'ws://localhost.se:8080/api';
+const url = `wss://localhost.se/api/speech-transcription/ws`;
 
 const CHUNK_LENGTH_MS = 1000;
 var socket;
@@ -27,6 +27,9 @@ var domainData;
 const TranscriptionButton = ({
   value,
   onChange,
+  onRawChange,
+  onStart,
+  onStop,
   style,
 }) => {
   const [isStarted, setIsStarted] = useState(false);
@@ -50,7 +53,7 @@ const TranscriptionButton = ({
           parsed.lastPartialLength = lastPartialLength;
 
           if (parsed.isPartial) {
-            lastPartialLength = parsed.result.length;
+            lastPartialLength = parsed.content.length;
           } else {
             lastPartialLength = 0;
           }
@@ -58,9 +61,10 @@ const TranscriptionButton = ({
           const currentValue = value || '';
           const nextValue =
             currentValue.slice(0, -1 * parsed.lastPartialLength || undefined) +
-            parsed.result;
+            parsed.content;
 
           value = nextValue;
+          onRawChange(parsed);
           onChange(nextValue);
         } catch (e) {
           console.error('Invalid response from BE');
@@ -72,6 +76,7 @@ const TranscriptionButton = ({
           stop();
           start();
         }
+        onStop();
       };
     });
   };
@@ -155,14 +160,16 @@ const TranscriptionButton = ({
   };
 
   const start = async () => {
-    await Promise.all([initSocket(), initRecorder()]);
-
-    socket.send(String(sampleRate));
-    socket.send('start');
-    setIsStarted(true);
-    recorder.start(CHUNK_LENGTH_MS);
-
-    window.requestAnimationFrame(detectSound);
+    Promise.all([initSocket(), initRecorder()]).then(() => {
+      socket.send(String(sampleRate));
+      socket.send('start');
+      setIsStarted(true);
+      recorder.start(CHUNK_LENGTH_MS);
+      onStart();
+      window.requestAnimationFrame(detectSound);
+    }, err => {
+      console.error(err);
+    });
   };
 
   const debounceStop = debounce(() => {
@@ -208,6 +215,7 @@ const TranscriptionButton = ({
       style={ mixedStyle }
       onClick={ onRecordClick }
       src={ isStarted ? 'pause-red.svg' : 'mic-red.svg' }
+      alt="mic"
     />
   );
 };
