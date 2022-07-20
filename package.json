@@ -10,7 +10,6 @@
     "opus-media-recorder": "^0.8.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-highlight-within-textarea": "^2.1.4",
     "react-scripts": "^5.0.1",
     "react-tooltip": "^4.2.21",
     "uuid": "^8.3.2",
