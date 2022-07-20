@@ -1,18 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import TranscriptionButton from './TranscriptionButton';
 import { HighlightWithinTextarea } from 'react-highlight-within-textarea'
 import './App.css';
+import ReactTooltip from 'react-tooltip';
 
 let allData = {
   content: '',
   items: []
 };
 
+const ToolTip = (props) => {
+  const content = Math.round(Number(props.className.split(' ').pop()) * 100) + '% certainty';
+  return (
+    <mark className={props.className} data-tip={content}>{props.children}</mark>
+  );
+};
+
 function App() {
-  const [result, setResult] = useState("");
+  const [result, setResult] = useState('');
   const [highlights, setHighlights] = useState([]);
 
   const onStart = () => {
+    allData.content = result;
   }
 
   const onStop = () => {
@@ -29,26 +38,32 @@ function App() {
       remainContent = remainContent.substring(emptyFronts + item.content.length)
       idx = item.end;
 
-      if (item.confidence < 0.2) {
+      if (item.confidence < 0.3) {
         newHighlights.push({
           highlight: [item.start, item.end],
-          className: 'pink'
+          component: ToolTip,
+          className: 'pink ' + item.confidence
         });
-      } else if (item.confidence < 0.4) {
+      } else if (item.confidence < 0.5) {
         newHighlights.push({
           highlight: [item.start, item.end],
-          className: 'orange'
+          component: ToolTip,
+          className: 'orange ' + item.confidence
         });
-      } else if (item.confidence < 0.6) {
+      } else if (item.confidence < 0.8) {
         newHighlights.push({
           highlight: [item.start, item.end],
-          className: 'yellow'
+          component: ToolTip,
+          className: 'yellow ' + item.confidence
         });
       }
     })
 
     setHighlights(newHighlights);
     setResult(allData.content);
+    setTimeout(() => {
+      ReactTooltip.rebuild();
+    })
   }
 
   const onRawChange = (object) => {
@@ -60,6 +75,7 @@ function App() {
 
   return (
     <div className="App">
+      <ReactTooltip />
       <div className="input-container">
         <HighlightWithinTextarea
           value={result}

@@ -148,13 +148,12 @@ const TranscriptionButton = ({
       tempVisualizerHeight = 7;
     }
 
-    setVisualizerHeight(tempVisualizerHeight)
-
     if (soundDetected) {
       debounceStop();
     }
 
     if (_isStarted()) {
+      setVisualizerHeight(tempVisualizerHeight)
       window.requestAnimationFrame(detectSound);
     }
   };
